@@ -1,0 +1,42 @@
+name: Release CI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Write sign info
+        env:
+          GOOGLE_SERVICES: ${{ secrets.GOOGLE_SERVICES }}
+        run: |
+          if [ ! -z "${{ secrets.KEYSTORE }}" ]; then
+            echo RELEASE_KEY_PASSWORD='${{ secrets.KEYSTORE_PASSWORD }}' >> gradle.properties
+            echo RELEASE_KEY_ALIAS='${{ secrets.KEY_ALIAS }}' >> gradle.properties
+            echo RELEASE_STORE_PASSWORD='${{ secrets.KEY_PASSWORD }}' >> gradle.properties
+            echo ${{ secrets.KEYSTORE }} | base64 --decode > ${{ github.workspace }}/release.keystore
+            echo "$GOOGLE_SERVICES" > ${{ github.workspace }}/TMessagesProj/google-services.json
+            sed -i "s/public static int APP_ID = .*/public static int APP_ID = ${{ secrets.APP_ID }};/" TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
+            sed -i "s/public static String APP_HASH = .*/public static String APP_HASH = \"${{ secrets.APP_HASH }}\";/" TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
+          fi
+
+      - name: Build with Gradle
+        run: chmod +x gradlew && ./gradlew assembleRelease
+
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: "apk"
+          path: "app/build/outputs/apk/release/app-release.apk"
+          if-no-files-found: error
