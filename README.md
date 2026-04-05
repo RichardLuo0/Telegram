@@ -1,5 +1,7 @@
 ## Original telegram with small modification
 - Add monet themes from https://github.com/Nekogram/Nekogram (GPLv2)
+- Use system emoji from https://github.com/Nekogram/Nekogram (GPLv2)
+
 ## Telegram messenger for Android
 
 [Telegram](https://telegram.org) is a messaging app with a focus on speed and security. It’s superfast, simple and free.

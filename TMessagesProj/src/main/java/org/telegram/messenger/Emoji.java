@@ -28,6 +28,7 @@ import android.util.SparseIntArray;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.graphics.Typeface;
 
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
@@ -42,6 +43,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Objects;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileReader;
 
 public class Emoji {
 
@@ -82,6 +88,9 @@ public class Emoji {
 
     private final static int MAX_RECENT_EMOJI_COUNT = 48;
 
+    private final static Typeface systemEmojiTypeface = Typeface.createFromFile(getSystemEmojiFontPath());
+    private static TextPaint textPaint;
+
     static {
         drawImgSize = AndroidUtilities.dp(20);
         bigImgSize = AndroidUtilities.dp(AndroidUtilities.isTablet() ? 40 : 34);
@@ -100,6 +109,43 @@ public class Emoji {
         placeholderPaint.setColor(0x00000000);
     }
 
+    public static File getSystemEmojiFontPath() {
+        try (var br = new BufferedReader(new FileReader("/system/etc/fonts.xml"))) {
+            String line;
+            var ignored = false;
+            while ((line = br.readLine()) != null) {
+                var trimmed = line.trim();
+                if (trimmed.startsWith("<family") && trimmed.contains("ignore=\"true\"")) {
+                    ignored = true;
+                } else if (trimmed.startsWith("</family>")) {
+                    ignored = false;
+                } else if (trimmed.startsWith("<font") && !ignored) {
+                    var start = trimmed.indexOf(">");
+                    var end = trimmed.indexOf("<", 1);
+                    if (start > 0 && end > 0) {
+                        var font = trimmed.substring(start + 1, end);
+                        if (font.toLowerCase().contains("emoji")) {
+                            File file = new File("/system/fonts/" + font);
+                            if (file.exists()) {
+                                FileLog.d("emoji font file fonts.xml = " + font);
+                                return file;
+                            }
+                        }
+                    }
+                }
+            }
+            br.close();
+
+            var fileAOSP = new File("/system/fonts/NotoColorEmoji.ttf");
+            if (fileAOSP.exists()) {
+                return fileAOSP;
+            }
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+        return null;
+    }
+
     public static void preloadEmoji(CharSequence code) {
         final DrawableInfo info = getDrawableInfo(code);
         if (info != null) {
@@ -114,45 +160,63 @@ public class Emoji {
             }
             loadingEmoji[page][page2] = true;
             Utilities.globalQueue.postRunnable(() -> {
-                Bitmap bitmap = loadBitmap("emoji/" + String.format(Locale.US, "%d_%d.png", page, page2));
-                try {
-                    if (emojiAlphaMasks == null) {
-                        emojiAlphaMasks = loadEmojiAlphaMasks();
-                    }
-
-                    int maskIndex = -1;
-                    if (emojiAlphaMasks != null) {
-                        maskIndex = emojiAlphaMasks.get(page * 4096 + page2, -1);
-                    }
-
-                    if (bitmap != null && maskIndex != -1) {
-                        final Bitmap alphaBitmap = loadBitmap("emoji/masks/" + String.format(Locale.US, "%d.png", maskIndex));
-                        if (alphaBitmap != null) {
-                            final int w = bitmap.getWidth();
-                            final int h = bitmap.getHeight();
-
-                            final int[] rgbPixels = new int[w * h];
-                            final int[] alphaPixels = new int[w * h];
-
-                            bitmap.getPixels(rgbPixels, 0, w, 0, 0, w, h);
-                            alphaBitmap.getPixels(alphaPixels, 0, w, 0, 0, w, h);
-                            alphaBitmap.recycle();
-
-                            for (int i = 0; i < rgbPixels.length; i++) {
-                                int c = rgbPixels[i];
-                                c = (c & 0x00FFFFFF) | ((alphaPixels[i] & 0xFF) << 24);
-
-                                rgbPixels[i] = c;
-                            }
-
-                            bitmap.recycle();
-                            bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-                            bitmap.setPixels(rgbPixels, 0, w, 0, 0, w, h);
-                        }
-                    }
-                } catch (Exception e) {
-                    FileLog.e(e);
+                int emojiSize = 66;
+                Bitmap bitmap = Bitmap.createBitmap(emojiSize, emojiSize, Bitmap.Config.ARGB_8888);
+                Canvas canvas = new Canvas(bitmap);
+                Typeface typeface = systemEmojiTypeface;
+                String emoji = fixEmoji(EmojiData.data[page][page2]);
+                int fontSize = (int) (emojiSize * 0.85f);
+                Rect areaRect = new Rect(0, 0, emojiSize, emojiSize);
+                if (textPaint == null) {
+                    textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+                    textPaint.setTextAlign(Paint.Align.CENTER);
                 }
+                textPaint.setTypeface(typeface);
+                textPaint.setTextSize(fontSize);
+                Rect textRect = new Rect();
+                textPaint.getTextBounds(emoji, 0, emoji.length(), textRect);
+                canvas.drawText(emoji, areaRect.centerX(), -textRect.top, textPaint);
+
+                // Bitmap bitmap = loadBitmap("emoji/" + String.format(Locale.US, "%d_%d.png", page, page2));
+                // try {
+                //     if (emojiAlphaMasks == null) {
+                //         emojiAlphaMasks = loadEmojiAlphaMasks();
+                //     }
+
+                //     int maskIndex = -1;
+                //     if (emojiAlphaMasks != null) {
+                //         maskIndex = emojiAlphaMasks.get(page * 4096 + page2, -1);
+                //     }
+
+                //     if (bitmap != null && maskIndex != -1) {
+                //         final Bitmap alphaBitmap = loadBitmap("emoji/masks/" + String.format(Locale.US, "%d.png", maskIndex));
+                //         if (alphaBitmap != null) {
+                //             final int w = bitmap.getWidth();
+                //             final int h = bitmap.getHeight();
+
+                //             final int[] rgbPixels = new int[w * h];
+                //             final int[] alphaPixels = new int[w * h];
+
+                //             bitmap.getPixels(rgbPixels, 0, w, 0, 0, w, h);
+                //             alphaBitmap.getPixels(alphaPixels, 0, w, 0, 0, w, h);
+                //             alphaBitmap.recycle();
+
+                //             for (int i = 0; i < rgbPixels.length; i++) {
+                //                 int c = rgbPixels[i];
+                //                 c = (c & 0x00FFFFFF) | ((alphaPixels[i] & 0xFF) << 24);
+
+                //                 rgbPixels[i] = c;
+                //             }
+
+                //             bitmap.recycle();
+                //             bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+                //             bitmap.setPixels(rgbPixels, 0, w, 0, 0, w, h);
+                //         }
+                //     }
+                // } catch (Exception e) {
+                //     FileLog.e(e);
+                // }
+
                 if (bitmap != null) {
                     emojiBmp[page][page2] = bitmap;
                     AndroidUtilities.cancelRunOnUIThread(invalidateUiRunnable);
