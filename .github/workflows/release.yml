@@ -25,18 +25,18 @@ jobs:
             echo RELEASE_KEY_PASSWORD='${{ secrets.KEYSTORE_PASSWORD }}' >> gradle.properties
             echo RELEASE_KEY_ALIAS='${{ secrets.KEY_ALIAS }}' >> gradle.properties
             echo RELEASE_STORE_PASSWORD='${{ secrets.KEY_PASSWORD }}' >> gradle.properties
-            echo ${{ secrets.KEYSTORE }} | base64 --decode > ${{ github.workspace }}/release.keystore
+            echo ${{ secrets.KEYSTORE }} | base64 --decode > ${{ github.workspace }}/TMessagesProj/config/release.keystore
             echo "$GOOGLE_SERVICES" > ${{ github.workspace }}/TMessagesProj/google-services.json
             sed -i "s/public static int APP_ID = .*/public static int APP_ID = ${{ secrets.APP_ID }};/" TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
             sed -i "s/public static String APP_HASH = .*/public static String APP_HASH = \"${{ secrets.APP_HASH }}\";/" TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
           fi
 
       - name: Build with Gradle
-        run: chmod +x gradlew && ./gradlew assembleRelease
+        run: chmod +x gradlew && ./gradlew :TMessagesProj_App:assembleRelease
 
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v6
         with:
           name: "apk"
-          path: "app/build/outputs/apk/release/app-release.apk"
+          path: "TMessagesProj_App/build"
           if-no-files-found: error
