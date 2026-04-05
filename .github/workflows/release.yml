@@ -38,5 +38,5 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: "apk"
-          path: "TMessagesProj_App/build"
+          path: "TMessagesProj_App/build/outputs/apk"
           if-no-files-found: error
