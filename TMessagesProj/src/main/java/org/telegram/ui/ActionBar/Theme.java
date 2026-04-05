@@ -132,6 +132,8 @@ import org.telegram.ui.RoundVideoProgressShadow;
 import org.telegram.ui.ThemeActivity;
 import org.telegram.ui.ThemePreviewActivity;
 
+import tw.nekomimi.nekogram.helpers.MonetHelper;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -2511,13 +2513,17 @@ public class Theme {
             return defaultAccentCount != 0;
         }
 
+        public boolean isMonet() {
+            return "Monet Dark".equals(name) || "Monet Light".equals(name);
+        }
+
         public boolean isDark() {
             if (isDark != UNKNOWN) {
                 return isDark == DARK;
             }
-            if ("Dark Blue".equals(name) || "Night".equals(name)) {
+            if ("Dark Blue".equals(name) || "Night".equals(name) || "AMOLED".equals(name) || "Monet Dark".equals(name)) {
                 isDark = DARK;
-            } else if ("Blue".equals(name) || "Arctic Blue".equals(name) || "Day".equals(name)) {
+            } else if ("Blue".equals(name) || "Arctic Blue".equals(name) || "Day".equals(name) || "Monet Light".equals(name)) {
                 isDark = LIGHT;
             }
             if (isDark == UNKNOWN) {
@@ -4758,6 +4764,28 @@ public class Theme {
         sortAccents(themeInfo);
         themes.add(themeInfo);
         themesDict.put("Night", themeInfo);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            themeInfo = new ThemeInfo();
+            themeInfo.name = "Monet Light";
+            themeInfo.assetName = "monet_light.attheme";
+            themeInfo.previewBackgroundColor = MonetHelper.getColor("n1_50");
+            themeInfo.previewInColor = MonetHelper.getColor("a1_100");
+            themeInfo.previewOutColor = MonetHelper.getColor("a1_600");
+            themeInfo.sortIndex = 6;
+            themes.add(themeInfo);
+            themesDict.put("Monet Light", themeInfo);
+
+            themeInfo = new ThemeInfo();
+            themeInfo.name = "Monet Dark";
+            themeInfo.assetName = "monet_dark.attheme";
+            themeInfo.previewBackgroundColor = MonetHelper.getColor("n1_900");
+            themeInfo.previewInColor = MonetHelper.getColor("n2_800");
+            themeInfo.previewOutColor = MonetHelper.getColor("a1_100");
+            themeInfo.sortIndex = 7;
+            themes.add(themeInfo);
+            themesDict.put("Monet Dark", themeInfo);
+        }
 
         String themesString = themeConfig.getString("themes2", null);
 
@@ -8198,6 +8226,8 @@ public class Theme {
                                     } catch (Exception ignore) {
                                         value = Utilities.parseInt(param);
                                     }
+                                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && (param.startsWith("a") || param.startsWith("n"))) {
+                                    value = MonetHelper.getColor(param.trim());
                                 } else {
                                     value = Utilities.parseInt(param);
                                 }
