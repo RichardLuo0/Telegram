@@ -27,6 +27,10 @@ jobs:
             echo RELEASE_STORE_PASSWORD='${{ secrets.KEY_PASSWORD }}' >> gradle.properties
             echo ${{ secrets.KEYSTORE }} | base64 --decode > ${{ github.workspace }}/TMessagesProj/config/release.keystore
             echo "$GOOGLE_SERVICES" > ${{ github.workspace }}/TMessagesProj/google-services.json
+            echo "$GOOGLE_SERVICES" > ${{ github.workspace }}/TMessagesProj_App/google-services.json
+            echo "$GOOGLE_SERVICES" > ${{ github.workspace }}/TMessagesProj_AppHockeyApp/google-services.json
+            echo "$GOOGLE_SERVICES" > ${{ github.workspace }}/TMessagesProj_AppHuawei/google-services.json
+            echo "$GOOGLE_SERVICES" > ${{ github.workspace }}/TMessagesProj_AppStandalone/google-services.json
             sed -i "s/public static int APP_ID = .*/public static int APP_ID = ${{ secrets.APP_ID }};/" TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
             sed -i "s/public static String APP_HASH = .*/public static String APP_HASH = \"${{ secrets.APP_HASH }}\";/" TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
           fi
