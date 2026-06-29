@@ -110,7 +110,6 @@ import org.telegram.ui.Components.Bulletin;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.ChoosingStickerStatusDrawable;
 import org.telegram.ui.Components.CombinedDrawable;
-import org.telegram.ui.Components.EightPatchDrawable;
 import org.telegram.ui.Components.FragmentContextViewWavesDrawable;
 import org.telegram.ui.Components.LinkPath;
 import org.telegram.ui.Components.MotionBackgroundDrawable;
@@ -142,7 +141,6 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -512,11 +510,16 @@ public class Theme {
             } else {
                 idx2 = 0;
             }
-            boolean forceSetColor = false;
+            int color;
+            if (isSelected) {
+                color = getColor(isOut ? key_chat_outBubbleSelected : key_chat_inBubbleSelected);
+            } else {
+                color = getColor(isOut ? key_chat_outBubble : key_chat_inBubble);
+            }
 
             boolean drawWithShadow = gradientShader == null && !isSelected && !isCrossfadeBackground;
             int shadowColor = getColor(isOut ? key_chat_outBubbleShadow : key_chat_inBubbleShadow);
-            if (lastDrawWithShadow != drawWithShadow || currentBackgroundDrawableRadius[idx2][idx] != newRad || (drawWithShadow && shadowDrawableColor[idx] != shadowColor)) {
+            if (lastDrawWithShadow != drawWithShadow || currentBackgroundDrawableRadius[idx2][idx] != newRad || (drawWithShadow && shadowDrawableColor[idx] != shadowColor) || backgroundDrawableColor[idx2][idx] != color) {
                 currentBackgroundDrawableRadius[idx2][idx] = newRad;
                 try {
                     Bitmap bitmap = Bitmap.createBitmap(dp(50), dp(40), Bitmap.Config.ARGB_8888);
@@ -551,28 +554,18 @@ public class Theme {
                     }
 
                     Paint shadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                    shadowPaint.setColor(0xffffffff);
+                    shadowPaint.setColor(color);
                     setBounds(0, 0, bitmap.getWidth(), bitmap.getHeight());
                     draw(canvas, shadowPaint);
 
-                    backgroundDrawable[idx2][idx] = new NinePatchDrawable(bitmap, getByteBuffer(bitmap.getWidth() / 2 - 1, bitmap.getWidth() / 2 + 1, bitmap.getHeight() / 2 - 1, bitmap.getHeight() / 2 + 1).array(), new Rect(), null);
-                    forceSetColor = true;
+                    backgroundDrawable[idx2][idx] = new NinePatchDrawable(bitmap, getByteBuffer(bitmap.getWidth() / 2 - 1, bitmap.getWidth() / 2 + 1, bitmap.getHeight() / 2 - 1, bitmap.getHeight() / 2 + 1, color).array(), new Rect(), null);
                     setBounds(backupRect);
                 } catch (Throwable ignore) {
 
                 }
             }
             lastDrawWithShadow = drawWithShadow;
-            int color;
-            if (isSelected) {
-                color = getColor(isOut ? key_chat_outBubbleSelected : key_chat_inBubbleSelected);
-            } else {
-                color = getColor(isOut ? key_chat_outBubble : key_chat_inBubble);
-            }
-            if (backgroundDrawable[idx2][idx] != null && (backgroundDrawableColor[idx2][idx] != color || forceSetColor)) {
-                backgroundDrawable[idx2][idx].setColorFilter(new PorterDuffColorFilter(color, PorterDuff.Mode.MULTIPLY));
-                backgroundDrawableColor[idx2][idx] = color;
-            }
+            backgroundDrawableColor[idx2][idx] = color;
             return backgroundDrawable[idx2][idx];
         }
 
@@ -588,7 +581,7 @@ public class Theme {
                 setBounds(0, 0, bitmap.getWidth(), bitmap.getHeight());
                 draw(canvas, shadowPaint);
 
-                transitionDrawable = new NinePatchDrawable(bitmap, getByteBuffer(bitmap.getWidth() / 2 - 1, bitmap.getWidth() / 2 + 1, bitmap.getHeight() / 2 - 1, bitmap.getHeight() / 2 + 1).array(), new Rect(), null);
+                transitionDrawable = new NinePatchDrawable(bitmap, getByteBuffer(bitmap.getWidth() / 2 - 1, bitmap.getWidth() / 2 + 1, bitmap.getHeight() / 2 - 1, bitmap.getHeight() / 2 + 1, Color.WHITE).array(), new Rect(), null);
                 setBounds(backupRect);
             }
             if (transitionDrawableColor != color) {
@@ -647,7 +640,9 @@ public class Theme {
                     }
                     draw(canvas, shadowPaint);
 
+                    int centralColorHint = NinePatchBuilder.NO_COLOR;
                     if (AndroidUtilities.density > 1) {
+                        centralColorHint = NinePatchBuilder.TRANSPARENT_COLOR;
                         shadowPaint.setColor(0);
                         shadowPaint.setShadowLayer(0, 0, 0, 0);
                         shadowPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
@@ -656,9 +651,7 @@ public class Theme {
                     }
 
                     shadowDrawableBitmap[idx] = bitmap;
-                    shadowDrawable[idx] = SharedConfig.useEightPatch ?
-                        new EightPatchDrawable(bitmap, getByteBuffer(bitmap.getWidth() / 2 - 1, bitmap.getWidth() / 2 + 1, bitmap.getHeight() / 2 - 1, bitmap.getHeight() / 2 + 1).array(), new Rect(), null):
-                        new NinePatchDrawable(bitmap, getByteBuffer(bitmap.getWidth() / 2 - 1, bitmap.getWidth() / 2 + 1, bitmap.getHeight() / 2 - 1, bitmap.getHeight() / 2 + 1).array(), new Rect(), null);
+                    shadowDrawable[idx] = new NinePatchDrawable(bitmap, getByteBuffer(bitmap.getWidth() / 2 - 1, bitmap.getWidth() / 2 + 1, bitmap.getHeight() / 2 - 1, bitmap.getHeight() / 2 + 1, centralColorHint).array(), new Rect(), null);
                     forceSetColor = true;
                 } catch (Throwable ignore) {
 
@@ -686,42 +679,8 @@ public class Theme {
             Arrays.fill(currentShadowDrawableRadius, -1);
         }
 
-        private static ByteBuffer getByteBuffer(int x1, int x2, int y1, int y2) {
-            // return NinePatchBuilder.createNinePatchChunk(x1, x2, y1, y2, 0, 0, 0, 0);
-
-            ByteBuffer buffer = ByteBuffer.allocate(4 + 4 * 7 + 4 * 2 + 4 * 2 + 4 * 9).order(ByteOrder.nativeOrder());
-            buffer.put((byte) 0x01);
-            buffer.put((byte) 2);
-            buffer.put((byte) 2);
-            buffer.put((byte) 0x09);
-
-            buffer.putInt(0);
-            buffer.putInt(0);
-
-            buffer.putInt(0);
-            buffer.putInt(0);
-            buffer.putInt(0);
-            buffer.putInt(0);
-
-            buffer.putInt(0);
-
-            buffer.putInt(x1);
-            buffer.putInt(x2);
-
-            buffer.putInt(y1);
-            buffer.putInt(y2);
-
-            buffer.putInt(0x00000001);
-            buffer.putInt(0x00000001);
-            buffer.putInt(0x00000001);
-            buffer.putInt(0x00000001);
-            buffer.putInt(0x00000001);
-            buffer.putInt(0x00000001);
-            buffer.putInt(0x00000001);
-            buffer.putInt(0x00000001);
-            buffer.putInt(0x00000001);
-
-            return buffer;
+        private static ByteBuffer getByteBuffer(int x1, int x2, int y1, int y2, int centralColorHint) {
+            return NinePatchBuilder.createNinePatchChunk(x1, x2, y1, y2, 0, 0, 0, 0, centralColorHint);
         }
 
         public void drawCached(Canvas canvas, PathDrawParams patchDrawCacheParams, Paint paintToUse) {
@@ -1305,7 +1264,7 @@ public class Theme {
                     int w = Math.min(AndroidUtilities.displaySize.x, AndroidUtilities.displaySize.y);
                     int h = Math.max(AndroidUtilities.displaySize.x, AndroidUtilities.displaySize.y);
                     if (svg) {
-                        patternBitmap = SvgHelper.getBitmap(patternPath, w, h, false);
+                        patternBitmap = SvgHelper.getBitmap(patternPath, w, h, false, SvgHelper.ScaleMode.ByWidth);
                     } else {
                         patternBitmap = loadScreenSizedBitmap(new FileInputStream(patternPath), 0);
                     }
@@ -2044,6 +2003,10 @@ public class Theme {
             AndroidUtilities.lerp(Color.alpha(color1), Color.alpha(color2), .85f),
             tempHSV
         );
+    }
+
+    public static int capAlpha(int color, float maxAlpha) {
+        return ColorUtils.setAlphaComponent(color, MathUtils.clamp(Color.alpha(color), 0, (int) (0xFF * maxAlpha)));
     }
 
     public static int multAlpha(int color, float multiply) {
@@ -7283,11 +7246,15 @@ public class Theme {
                 switchingNightTheme = false;
             }
         } else {
-            if (currentTheme != currentDayTheme && (currentTheme == null || currentDayTheme != null && currentTheme.isLight() != currentDayTheme.isLight())) {
+            ThemeInfo dayTheme = currentDayTheme;
+            if (dayTheme != null && dayTheme.isDark() && selectedAutoNightType != AUTO_NIGHT_TYPE_NONE && defaultTheme != null) {
+                dayTheme = defaultTheme;
+            }
+            if (currentTheme != dayTheme && (currentTheme == null || dayTheme != null && currentTheme.isDark() != dayTheme.isDark())) {
                 isInNigthMode = false;
                 lastThemeSwitchTime = SystemClock.elapsedRealtime();
                 switchingNightTheme = true;
-                NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.needSetDayNightTheme, currentDayTheme, true, null, -1);
+                NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.needSetDayNightTheme, dayTheme, true, null, -1);
                 switchingNightTheme = false;
             }
         }
@@ -10058,11 +10025,14 @@ public class Theme {
                     Bitmap patternBitmap = null;
 
                     if (wallpaperFile != null) {
+                        final int w = Math.min(AndroidUtilities.displaySize.x, AndroidUtilities.displaySize.y);
+                        final int h = Math.max(AndroidUtilities.displaySize.x, AndroidUtilities.displaySize.y);
+
                         if (wallpaperDocument != null) {
                             File f = FileLoader.getInstance(UserConfig.selectedAccount).getPathToAttach(wallpaperDocument, true);
-                            patternBitmap = SvgHelper.getBitmap(f, dp(360), dp(640), false);
+                            patternBitmap = SvgHelper.getBitmap(f, w, h, false, SvgHelper.ScaleMode.ByWidth);
                         } else {
-                            patternBitmap = SvgHelper.getBitmap(R.raw.default_pattern, dp(360), dp(640), Color.WHITE);
+                            patternBitmap = SvgHelper.getBitmap(R.raw.default_pattern, w, h, Color.WHITE, 1f, SvgHelper.ScaleMode.ByWidth);
                         }
                         if (patternBitmap != null) {
                             FileOutputStream stream = null;
@@ -10236,7 +10206,7 @@ public class Theme {
             w = Math.min(AndroidUtilities.displaySize.x, AndroidUtilities.displaySize.y);
             h = Math.max(AndroidUtilities.displaySize.x, AndroidUtilities.displaySize.y);
         }
-        motionBackgroundDrawable.setPatternBitmap(34, SvgHelper.getBitmap(R.raw.default_pattern, w, h, Color.BLACK));
+        motionBackgroundDrawable.setPatternBitmap(34, SvgHelper.getBitmap(R.raw.default_pattern, w, h, Color.BLACK, 1f, SvgHelper.ScaleMode.ByWidth));
         motionBackgroundDrawable.setPatternColorFilter(motionBackgroundDrawable.getPatternColor());
         return motionBackgroundDrawable;
     }
@@ -10572,6 +10542,11 @@ public class Theme {
 
     public static Drawable getThemeDrawable(String drawableKey) {
         return defaultChatDrawables.get(drawableKey);
+    }
+
+    public static Drawable getThemeDrawable(String key, Theme.ResourcesProvider resourcesProvider) {
+        Drawable drawable = resourcesProvider != null ? resourcesProvider.getDrawable(key) : null;
+        return drawable != null ? drawable : defaultChatDrawables.get(key);
     }
 
     public static int getThemeDrawableColorKey(String drawableKey) {

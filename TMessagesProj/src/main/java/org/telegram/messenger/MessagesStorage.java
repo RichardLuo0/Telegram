@@ -43,11 +43,13 @@ import org.telegram.tgnet.Vector;
 import org.telegram.tgnet.tl.TL_account;
 import org.telegram.tgnet.tl.TL_bots;
 import org.telegram.tgnet.tl.TL_stories;
+import org.telegram.tgnet.tl.TL_update;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Adapters.DialogsSearchAdapter;
 import org.telegram.ui.ChatActivity;
 import org.telegram.ui.Components.Forum.ForumUtilities;
 import org.telegram.ui.Components.Reactions.ReactionsLayoutInBubble;
+import org.telegram.ui.Components.Reactions.ReactionsUtils;
 import org.telegram.ui.Components.VideoPlayer;
 import org.telegram.ui.DialogsActivity;
 import org.telegram.ui.EditWidgetActivity;
@@ -111,7 +113,7 @@ public class MessagesStorage extends BaseController {
         }
     }
 
-    public final static int LAST_DB_VERSION = 170;
+    public final static int LAST_DB_VERSION = 174;
     private boolean databaseMigrationInProgress;
     public boolean showClearDatabaseAlert;
 
@@ -529,7 +531,7 @@ public class MessagesStorage extends BaseController {
 
     public static void createTables(SQLiteDatabase database) throws SQLiteException {
         database.executeFast("CREATE TABLE messages_holes(uid INTEGER, start INTEGER, end INTEGER, PRIMARY KEY(uid, start));").stepThis().dispose();
-        database.executeFast("CREATE INDEX IF NOT EXISTS uid_end_messages_holes ON messages_holes(uid, end);").stepThis().dispose();
+        database.executeFast("CREATE INDEX IF NOT EXISTS uid_end_messages_holes_4_dialogs ON messages_holes(uid, end);").stepThis().dispose();
 
         database.executeFast("CREATE TABLE media_holes_v2(uid INTEGER, type INTEGER, start INTEGER, end INTEGER, PRIMARY KEY(uid, type, start));").stepThis().dispose();
         database.executeFast("CREATE INDEX IF NOT EXISTS uid_end_media_holes_v2 ON media_holes_v2(uid, type, end);").stepThis().dispose();
@@ -553,10 +555,10 @@ public class MessagesStorage extends BaseController {
         database.executeFast("CREATE INDEX IF NOT EXISTS uid_mid_groupid_messages_v2 ON messages_v2(uid, mid, group_id);").stepThis().dispose();
 
         database.executeFast("CREATE TABLE saved_dialogs(did INTEGER, date INTEGER, last_mid INTEGER, pinned INTEGER, flags INTEGER, folder_id INTEGER, last_mid_group INTEGER, count INTEGER, forumChatId INTEGER, unread_count INTEGER, max_read_id INTEGER, read_outbox INTEGER, PRIMARY KEY (did, forumChatId))").stepThis().dispose();
-        database.executeFast("CREATE INDEX IF NOT EXISTS date_idx_dialogs ON saved_dialogs(date);").stepThis().dispose();
-        database.executeFast("CREATE INDEX IF NOT EXISTS last_mid_idx_dialogs ON saved_dialogs(last_mid);").stepThis().dispose();
-        database.executeFast("CREATE INDEX IF NOT EXISTS folder_id_idx_dialogs ON saved_dialogs(folder_id);").stepThis().dispose();
-        database.executeFast("CREATE INDEX IF NOT EXISTS flags_idx_dialogs ON saved_dialogs(flags);").stepThis().dispose();
+        database.executeFast("CREATE INDEX IF NOT EXISTS date_idx_4_saved_dialogs ON saved_dialogs(date);").stepThis().dispose();
+        database.executeFast("CREATE INDEX IF NOT EXISTS last_mid_idx_4_saved_dialogs ON saved_dialogs(last_mid);").stepThis().dispose();
+        database.executeFast("CREATE INDEX IF NOT EXISTS folder_id_idx_4_saved_dialogs ON saved_dialogs(folder_id);").stepThis().dispose();
+        database.executeFast("CREATE INDEX IF NOT EXISTS flags_idx_4_saved_dialogs ON saved_dialogs(flags);").stepThis().dispose();
         database.executeFast("CREATE INDEX IF NOT EXISTS forum_idx_dialogs ON saved_dialogs(forumChatId);").stepThis().dispose();
 
         database.executeFast("CREATE TABLE download_queue(uid INTEGER, type INTEGER, date INTEGER, data BLOB, parent TEXT, PRIMARY KEY (uid, type));").stepThis().dispose();
@@ -567,13 +569,13 @@ public class MessagesStorage extends BaseController {
         database.executeFast("CREATE INDEX IF NOT EXISTS sphone_deleted_idx_user_phones ON user_phones_v7(sphone, deleted);").stepThis().dispose();
 
         database.executeFast("CREATE TABLE dialogs(did INTEGER PRIMARY KEY, date INTEGER, unread_count INTEGER, last_mid INTEGER, inbox_max INTEGER, outbox_max INTEGER, last_mid_i INTEGER, unread_count_i INTEGER, pts INTEGER, date_i INTEGER, pinned INTEGER, flags INTEGER, folder_id INTEGER, data BLOB, unread_reactions INTEGER, last_mid_group INTEGER, ttl_period INTEGER, unread_poll_votes INTEGER)").stepThis().dispose();
-        database.executeFast("CREATE INDEX IF NOT EXISTS date_idx_dialogs ON dialogs(date);").stepThis().dispose();
-        database.executeFast("CREATE INDEX IF NOT EXISTS last_mid_idx_dialogs ON dialogs(last_mid);").stepThis().dispose();
+        database.executeFast("CREATE INDEX IF NOT EXISTS date_idx_4_dialogs ON dialogs(date);").stepThis().dispose();
+        database.executeFast("CREATE INDEX IF NOT EXISTS last_mid_idx_4_dialogs ON dialogs(last_mid);").stepThis().dispose();
         database.executeFast("CREATE INDEX IF NOT EXISTS unread_count_idx_dialogs ON dialogs(unread_count);").stepThis().dispose();
         database.executeFast("CREATE INDEX IF NOT EXISTS last_mid_i_idx_dialogs ON dialogs(last_mid_i);").stepThis().dispose();
         database.executeFast("CREATE INDEX IF NOT EXISTS unread_count_i_idx_dialogs ON dialogs(unread_count_i);").stepThis().dispose();
-        database.executeFast("CREATE INDEX IF NOT EXISTS folder_id_idx_dialogs ON dialogs(folder_id);").stepThis().dispose();
-        database.executeFast("CREATE INDEX IF NOT EXISTS flags_idx_dialogs ON dialogs(flags);").stepThis().dispose();
+        database.executeFast("CREATE INDEX IF NOT EXISTS folder_id_idx_4_dialogs ON dialogs(folder_id);").stepThis().dispose();
+        database.executeFast("CREATE INDEX IF NOT EXISTS flags_idx_4_dialogs ON dialogs(flags);").stepThis().dispose();
 
         database.executeFast("CREATE TABLE dialog_filter(id INTEGER PRIMARY KEY, ord INTEGER, unread_count INTEGER, flags INTEGER, title TEXT, color INTEGER DEFAULT -1, entities BLOB, noanimate INTEGER)").stepThis().dispose();
         database.executeFast("CREATE TABLE dialog_filter_ep(id INTEGER, peer INTEGER, PRIMARY KEY (id, peer))").stepThis().dispose();
@@ -676,7 +678,7 @@ public class MessagesStorage extends BaseController {
         database.executeFast("CREATE TABLE emoji_statuses(data BLOB, type INTEGER);").stepThis().dispose();
 
         database.executeFast("CREATE TABLE messages_holes_topics(uid INTEGER, topic_id INTEGER, start INTEGER, end INTEGER, PRIMARY KEY(uid, topic_id, start));").stepThis().dispose();
-        database.executeFast("CREATE INDEX IF NOT EXISTS uid_end_messages_holes ON messages_holes_topics(uid, topic_id, end);").stepThis().dispose();
+        database.executeFast("CREATE INDEX IF NOT EXISTS uid_end_messages_holes_4_topics ON messages_holes_topics(uid, topic_id, end);").stepThis().dispose();
 
         database.executeFast("CREATE TABLE messages_topics(mid INTEGER, uid INTEGER, topic_id INTEGER, read_state INTEGER, send_state INTEGER, date INTEGER, data BLOB, out INTEGER, ttl INTEGER, media INTEGER, replydata BLOB, imp INTEGER, mention INTEGER, forwards INTEGER, replies_data BLOB, thread_reply_id INTEGER, is_channel INTEGER, reply_to_message_id INTEGER, custom_params BLOB, reply_to_story_id INTEGER, PRIMARY KEY(mid, topic_id, uid))").stepThis().dispose();
         database.executeFast("CREATE INDEX IF NOT EXISTS uid_date_mid_idx_messages_topics ON messages_topics(uid, date, mid);").stepThis().dispose();
@@ -711,6 +713,7 @@ public class MessagesStorage extends BaseController {
 
         database.executeFast("CREATE TABLE emoji_groups(type INTEGER PRIMARY KEY, data BLOB)").stepThis().dispose();
         database.executeFast("CREATE TABLE app_config(data BLOB)").stepThis().dispose();
+        database.executeFast("CREATE TABLE web_browser_settings(data BLOB)").stepThis().dispose();
         database.executeFast("CREATE TABLE effects(data BLOB)").stepThis().dispose();
 
         database.executeFast("CREATE TABLE stories (dialog_id INTEGER, story_id INTEGER, data BLOB, custom_params BLOB, PRIMARY KEY (dialog_id, story_id));").stepThis().dispose();
@@ -736,6 +739,7 @@ public class MessagesStorage extends BaseController {
 
         database.executeFast("CREATE TABLE business_replies(topic_id INTEGER PRIMARY KEY, name TEXT, order_value INTEGER, count INTEGER);").stepThis().dispose();
         database.executeFast("CREATE TABLE quick_replies_messages(mid INTEGER, topic_id INTEGER, send_state INTEGER, date INTEGER, data BLOB, ttl INTEGER, replydata BLOB, reply_to_message_id INTEGER, PRIMARY KEY(mid, topic_id))").stepThis().dispose();
+        database.executeFast("CREATE INDEX IF NOT EXISTS send_state_idx_quick_replies_messages ON quick_replies_messages(mid, send_state, date);").stepThis().dispose();
         database.executeFast("CREATE INDEX IF NOT EXISTS topic_date_idx_quick_replies_messages ON quick_replies_messages(topic_id, date);").stepThis().dispose();
         database.executeFast("CREATE INDEX IF NOT EXISTS reply_to_idx_quick_replies_messages ON quick_replies_messages(mid, reply_to_message_id);").stepThis().dispose();
         database.executeFast("CREATE INDEX IF NOT EXISTS idx_to_reply_quick_replies_messages ON quick_replies_messages(reply_to_message_id, mid);").stepThis().dispose();
@@ -776,14 +780,6 @@ public class MessagesStorage extends BaseController {
             databaseMigrationInProgress = false;
             NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.onDatabaseMigration, false);
         });
-    }
-
-    void executeNoException(String query) {
-        try {
-            database.executeFast(query).stepThis().dispose();
-        } catch (Exception e) {
-            FileLog.e(e);
-        }
     }
 
     private void cleanupInternal(boolean deleteFiles) {
@@ -2120,7 +2116,7 @@ public class MessagesStorage extends BaseController {
                 cursor = null;
                 if (!mids.isEmpty()) {
                     markMessagesAsDeletedInternal(selfId, mids, true, 0, 0);
-                    updateDialogsWithDeletedMessages(selfId, -selfId, mids, null, false);
+                    updateDialogsWithDeletedMessages(selfId, -selfId, mids, null);
                     AndroidUtilities.runOnUIThread(() -> {
                         getMessagesController().markDialogMessageAsDeleted(selfId, mids);
                         getNotificationCenter().postNotificationName(NotificationCenter.messagesDeleted, mids, 0L, false);
@@ -2132,6 +2128,16 @@ public class MessagesStorage extends BaseController {
                 if (cursor != null) {
                     cursor.dispose();
                 }
+            }
+        });
+    }
+
+    public void removeAllTopics(long dialogId) {
+        executeInStorageQueue(() -> {
+            try {
+                database.executeFast(String.format(Locale.US, "DELETE FROM topics WHERE did = %d", dialogId)).stepThis().dispose();
+            } catch (SQLiteException e) {
+                e.printStackTrace();
             }
         });
     }
@@ -4108,6 +4114,119 @@ public class MessagesStorage extends BaseController {
         });
     }
 
+    public void deleteAllReactionsFromChat(long dialogId, long fromId, int msgId) {
+        executeInStorageQueue(() -> {
+            SQLiteCursor cursor = null;
+            SQLitePreparedStatement state = null;
+            try {
+                final SparseArray<TLRPC.TL_messageReactions> updatedReactions = new SparseArray<>();
+                for (int s = 0; s < 2; s++) {
+                    if (msgId != 0) {
+                        if (s == 0) {
+                            cursor = database.queryFinalized("SELECT data FROM messages_v2 WHERE uid = " + dialogId + " AND mid = " + msgId);
+                        } else {
+                            cursor = database.queryFinalized("SELECT data FROM messages_topics WHERE uid = " + dialogId + " AND mid = " + msgId);
+                        }
+                    } else {
+                        if (s == 0) {
+                            cursor = database.queryFinalized("SELECT data FROM messages_v2 WHERE uid = " + dialogId + " ORDER BY mid DESC LIMIT 500");
+                        } else {
+                            cursor = database.queryFinalized("SELECT data FROM messages_topics WHERE uid = " + dialogId + " ORDER BY mid DESC LIMIT 500");
+                        }
+                    }
+
+                    ArrayList<TLRPC.Message> messagesToRewrite = new ArrayList<>();
+                    while (cursor.next()) {
+                        NativeByteBuffer data = cursor.byteBufferValue(0);
+                        if (data != null) {
+                            boolean updated = false;
+                            TLRPC.Message message = TLRPC.Message.TLdeserialize(data, data.readInt32(false), false);
+                            if (message != null) {
+                                message.readAttachPath(data, getUserConfig().clientUserId);
+                                if (message.reactions != null && message.reactions.recent_reactions != null) {
+                                    for (int i = 0; i < message.reactions.recent_reactions.size(); i++) {
+                                        final TLRPC.MessagePeerReaction reaction = message.reactions.recent_reactions.get(i);
+                                        if (MessageObject.getPeerId(reaction.peer_id) == fromId) {
+                                            updated = true;
+                                            message.reactions.recent_reactions.remove(i);
+                                            i--;
+
+                                            if (message.reactions.results != null) {
+                                                for (int a = 0; a < message.reactions.results.size(); a++) {
+                                                    final TLRPC.ReactionCount reactionCount = message.reactions.results.get(a);
+                                                    if (ReactionsUtils.compare(reaction.reaction, reactionCount.reaction)) {
+                                                        reactionCount.count--;
+                                                        if (reactionCount.count <= 0) {
+                                                            message.reactions.results.remove(a);
+                                                            a--;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                if (updated) {
+                                    messagesToRewrite.add(message);
+                                    updatedReactions.put(message.id, message.reactions);
+                                }
+                            }
+                            data.reuse();
+                        }
+                    }
+                    cursor.dispose();
+                    cursor = null;
+
+                    if (!messagesToRewrite.isEmpty()) {
+                        database.beginTransaction();
+                        for (TLRPC.Message message : messagesToRewrite) {
+                            if (s == 0) {
+                                state = database.executeFast("UPDATE messages_v2 SET data = ? WHERE mid = ? AND uid = ?");
+                            } else {
+                                state = database.executeFast("UPDATE messages_topics SET data = ? WHERE mid = ? AND uid = ?");
+                            }
+
+                            MessageObject.normalizeFlags(message);
+                            NativeByteBuffer data2 = new NativeByteBuffer(message.getObjectSize());
+                            message.serializeToStream(data2);
+
+                            state.requery();
+                            state.bindByteBuffer(1, data2);
+                            state.bindInteger(2, message.id);
+                            state.bindLong(3, dialogId);
+                            state.step();
+                            data2.reuse();
+                            state.dispose();
+                            state = null;
+                        }
+                        database.commitTransaction();
+                    }
+                }
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (updatedReactions.size() != 0) {
+                        for (int a = 0, N = Math.min(updatedReactions.size(), 100); a < N; a++) {
+                            final int messageId = updatedReactions.keyAt(a);
+                            final TLRPC.TL_messageReactions messageReactions = updatedReactions.valueAt(a);
+                            getNotificationCenter().postNotificationName(NotificationCenter.didUpdateReactions, dialogId, messageId, messageReactions);
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                checkSQLException(e);
+            } finally {
+                if (database != null) {
+                    database.commitTransaction();
+                }
+                if (cursor != null) {
+                    cursor.dispose();
+                }
+                if (state != null) {
+                    state.dispose();
+                }
+            }
+        });
+    }
+
     public void deleteUserChatHistory(long dialogId, long fromId) {
         storageQueue.postRunnable(() -> {
             SQLiteCursor cursor = null;
@@ -4322,9 +4441,7 @@ public class MessagesStorage extends BaseController {
                         cursor2 = null;
 
                         database.executeFast("DELETE FROM messages_v2 WHERE uid = " + did + " AND mid != " + last_mid_i + " AND mid != " + last_mid).stepThis().dispose();
-                        if (did == getUserConfig().getClientUserId()) {
-                            database.executeFast("DELETE FROM messages_topics WHERE uid = " + did + " AND mid != " + last_mid_i + " AND mid != " + last_mid).stepThis().dispose();
-                        }
+                        database.executeFast("DELETE FROM messages_topics WHERE uid = " + did + " AND mid != " + last_mid_i + " AND mid != " + last_mid).stepThis().dispose();
                         database.executeFast("DELETE FROM messages_holes WHERE uid = " + did).stepThis().dispose();
                         database.executeFast("DELETE FROM bot_keyboard WHERE uid = " + did).stepThis().dispose();
                         database.executeFast("DELETE FROM bot_keyboard_topics WHERE uid = " + did).stepThis().dispose();
@@ -4351,9 +4468,7 @@ public class MessagesStorage extends BaseController {
 
                 database.executeFast("UPDATE dialogs SET unread_count = 0, unread_count_i = 0 WHERE did = " + did).stepThis().dispose();
                 database.executeFast("DELETE FROM messages_v2 WHERE uid = " + did).stepThis().dispose();
-                if (did == getUserConfig().getClientUserId()) {
-                    database.executeFast("DELETE FROM messages_topics WHERE uid = " + did).stepThis().dispose();
-                }
+                database.executeFast("DELETE FROM messages_topics WHERE uid = " + did).stepThis().dispose();
                 database.executeFast("DELETE FROM bot_keyboard WHERE uid = " + did).stepThis().dispose();
                 database.executeFast("DELETE FROM bot_keyboard_topics WHERE uid = " + did).stepThis().dispose();
                 database.executeFast("DELETE FROM media_counts_v2 WHERE uid = " + did).stepThis().dispose();
@@ -9701,16 +9816,24 @@ public class MessagesStorage extends BaseController {
             return;
         }
         try {
-            AppWidgetManager appWidgetManager = null;
-            String ids = TextUtils.join(",", dids);
+            ArrayList<Integer> widgetIds = null;
             SQLiteCursor cursor = database.queryFinalized(String.format(Locale.US, "SELECT DISTINCT id FROM shortcut_widget WHERE did IN(%s,-1)", TextUtils.join(",", dids)));
             while (cursor.next()) {
-                if (appWidgetManager == null) {
-                    appWidgetManager = AppWidgetManager.getInstance(ApplicationLoader.applicationContext);
+                if (widgetIds == null) {
+                    widgetIds = new ArrayList<>();
                 }
-                appWidgetManager.notifyAppWidgetViewDataChanged(cursor.intValue(0), R.id.list_view);
+                widgetIds.add(cursor.intValue(0));
             }
             cursor.dispose();
+            if (widgetIds != null) {
+                ArrayList<Integer> widgetIdsFinal = widgetIds;
+                AndroidUtilities.runOnUIThread(() -> {
+                    AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(ApplicationLoader.applicationContext);
+                    for (int i = 0; i < widgetIdsFinal.size(); i++) {
+                        appWidgetManager.notifyAppWidgetViewDataChanged(widgetIdsFinal.get(i), R.id.list_view);
+                    }
+                });
+            }
         } catch (Exception e) {
             checkSQLException(e);
         }
@@ -11053,7 +11176,7 @@ public class MessagesStorage extends BaseController {
                 dialogs.dialogs.add(dialog);
                 putDialogsInternal(dialogs, 0);
 
-                updateDialogsWithDeletedMessages(-channelId, channelId, new ArrayList<>(), null, false);
+                updateDialogsWithDeletedMessages(-channelId, channelId, new ArrayList<>(), null);
                 AndroidUtilities.runOnUIThread(() -> getNotificationCenter().postNotificationName(NotificationCenter.removeAllMessagesFromDialog, did, true, difference));
                 if (checkInvite) {
                     if (newDialogType == 1) {
@@ -13002,7 +13125,7 @@ public class MessagesStorage extends BaseController {
                 }
             }
         } else if (_oldId > 0) {
-            TLRPC.TL_updateDeleteScheduledMessages update = new TLRPC.TL_updateDeleteScheduledMessages();
+            TL_update.TL_updateDeleteScheduledMessages update = new TL_update.TL_updateDeleteScheduledMessages();
             update.messages.add(oldMessageId);
             if (DialogObject.isChatDialog(dialogId)) {
                 update.peer = new TLRPC.TL_peerChannel();
@@ -13431,6 +13554,49 @@ public class MessagesStorage extends BaseController {
         }
     }
 
+    public void markVoiceMessageContentAsRead(long dialogId, ArrayList<Integer> mids) {
+        if (isEmpty(mids)) {
+            return;
+        }
+        storageQueue.postRunnable(() -> {
+            ArrayList<MessageObject> toMark = new ArrayList<>();
+            SQLiteCursor cursor = null;
+            try {
+                String idsStr = TextUtils.join(",", mids);
+                cursor = database.queryFinalized(String.format(Locale.US,
+                        "SELECT data FROM messages_v2 WHERE uid = %d AND mid IN (%s)",
+                        dialogId, idsStr));
+                while (cursor.next()) {
+                    NativeByteBuffer data = cursor.byteBufferValue(0);
+                    if (data == null) continue;
+                    try {
+                        TLRPC.Message msg = TLRPC.Message.TLdeserialize(data, data.readInt32(false), false);
+                        if (msg == null) continue;
+                        msg.readAttachPath(data, getUserConfig().clientUserId);
+                        if (msg.out) continue;
+                        if (!msg.media_unread) continue;
+                        if (!MessageObject.isVoiceMessage(msg)) continue;
+                        toMark.add(new MessageObject(currentAccount, msg, false, false));
+                    } finally {
+                        data.reuse();
+                    }
+                }
+                cursor.dispose();
+                cursor = null;
+            } catch (Exception e) {
+                checkSQLException(e);
+            } finally {
+                if (cursor != null) cursor.dispose();
+            }
+            if (toMark.isEmpty()) return;
+            AndroidUtilities.runOnUIThread(() -> {
+                for (MessageObject mo : toMark) {
+                    getMessagesController().markMessageContentAsRead(mo);
+                }
+            });
+        });
+    }
+
     public void markMessagesContentAsRead(long dialogId, ArrayList<Integer> mids, int currentDate, int readDate) {
         if (isEmpty(mids)) {
             return;
@@ -13718,56 +13884,58 @@ public class MessagesStorage extends BaseController {
                 cursor = null;
 
                 ArrayList<TopicKey> topicsToDelete = null;
-                if (dialogId < 0) {
+
+                if (dialogId != 0) {
                     cursor = database.queryFinalized(String.format(Locale.US, "SELECT uid, data, read_state, out, mention, mid FROM messages_topics WHERE mid IN(%s) AND uid = %d", ids, dialogId));
+                } else {
+                    cursor = database.queryFinalized(String.format(Locale.US, "SELECT uid, data, read_state, out, mention, mid FROM messages_topics WHERE mid IN(%s) AND uid > 0", ids));
+                }
+                try {
+                    while (cursor.next()) {
+                        long did = cursor.longValue(0);
+                        int mid = cursor.intValue(5);
+                        long topicId = 0;
+                        unknownMessagesInTopics.remove((Integer) mid);
 
-                    try {
-                        while (cursor.next()) {
-                            long did = cursor.longValue(0);
-                            int mid = cursor.intValue(5);
-                            long topicId = 0;
-                            unknownMessagesInTopics.remove((Integer) mid);
-
-                            NativeByteBuffer data = cursor.byteBufferValue(1);
-                            if (data != null) {
-                                TLRPC.Message message = TLRPC.Message.TLdeserialize(data, data.readInt32(false), false);
-                                message.readAttachPath(data, getUserConfig().clientUserId);
-                                data.reuse();
-                                addFilesToDelete(message, filesToDelete, idsToDelete, namesToDelete, false);
-                                if (message.action instanceof TLRPC.TL_messageActionTopicCreate) {
-                                    if (topicsToDelete == null) {
-                                        topicsToDelete = new ArrayList<>();
-                                    }
-                                    topicsToDelete.add(TopicKey.of(did, message.id));
+                        NativeByteBuffer data = cursor.byteBufferValue(1);
+                        if (data != null) {
+                            TLRPC.Message message = TLRPC.Message.TLdeserialize(data, data.readInt32(false), false);
+                            message.readAttachPath(data, getUserConfig().clientUserId);
+                            data.reuse();
+                            addFilesToDelete(message, filesToDelete, idsToDelete, namesToDelete, false);
+                            if (message.action instanceof TLRPC.TL_messageActionTopicCreate) {
+                                if (topicsToDelete == null) {
+                                    topicsToDelete = new ArrayList<>();
                                 }
-                                topicId = MessageObject.getTopicId(currentAccount, message, getForumTypeFlags(did));
+                                topicsToDelete.add(TopicKey.of(did, message.id));
                             }
-                            if (topicId != 0) {
-                                TopicKey topicKey = TopicKey.of(dialogId, topicId);
+                            topicId = MessageObject.getTopicId(currentAccount, message, getForumTypeFlags(did));
+                        }
+                        if (topicId != 0) {
+                            TopicKey topicKey = TopicKey.of(did, topicId);
 
-                                int read_state = cursor.intValue(2);
-                                int[] count = topicsMessagesToUpdate.get(topicKey);
-                                if (count == null) {
-                                    count = new int[3];
-                                    topicsMessagesToUpdate.put(topicKey, count);
+                            int read_state = cursor.intValue(2);
+                            int[] count = topicsMessagesToUpdate.get(topicKey);
+                            if (count == null) {
+                                count = new int[3];
+                                topicsMessagesToUpdate.put(topicKey, count);
+                            }
+                            count[2]++;
+                            if (cursor.intValue(3) == 0) {
+                                if (read_state < 2) {
+                                    count[1]++;
                                 }
-                                count[2]++;
-                                if (cursor.intValue(3) == 0) {
-                                    if (read_state < 2) {
-                                        count[1]++;
-                                    }
-                                    if (read_state == 0 || read_state == 2) {
-                                        count[0]++;
-                                    }
+                                if (read_state == 0 || read_state == 2) {
+                                    count[0]++;
                                 }
                             }
                         }
-                    } catch (Exception e) {
-                        checkSQLException(e);
                     }
-                    cursor.dispose();
-                    cursor = null;
+                } catch (Exception e) {
+                    checkSQLException(e);
                 }
+                cursor.dispose();
+                cursor = null;
 
                 database.beginTransaction();
                 for (int i = 0; i < 4; i++) {
@@ -14356,12 +14524,8 @@ public class MessagesStorage extends BaseController {
         }
     }
 
-    public void updateDialogsWithDeletedMessages(long dialogId, long channelId, ArrayList<Integer> messages, ArrayList<Long> additionalDialogsToUpdate, boolean useQueue) {
-        if (useQueue) {
-            storageQueue.postRunnable(() -> updateDialogsWithDeletedMessagesInternal(dialogId, channelId, messages, additionalDialogsToUpdate));
-        } else {
-            updateDialogsWithDeletedMessagesInternal(dialogId, channelId, messages, additionalDialogsToUpdate);
-        }
+    public void updateDialogsWithDeletedMessages(long dialogId, long channelId, ArrayList<Integer> messages, ArrayList<Long> additionalDialogsToUpdate) {
+        executeInStorageQueue(() -> updateDialogsWithDeletedMessagesInternal(dialogId, channelId, messages, additionalDialogsToUpdate));
     }
 
     public ArrayList<Long> markMessagesAsDeleted(long dialogId, ArrayList<Integer> messages, boolean useQueue, boolean deleteFiles, int mode, int topicId) {
@@ -15663,7 +15827,7 @@ public class MessagesStorage extends BaseController {
                     database.commitTransaction();
 
                     if (createDialog || updateDialogs) {
-                        updateDialogsWithDeletedMessages(dialogId, channelId, new ArrayList<>(), null, false);
+                        updateDialogsWithDeletedMessages(dialogId, channelId, new ArrayList<>(), null);
                     }
                     if (changedSavedMessages != null) {
                         final ArrayList<TLRPC.Message> finalChangedSavedMessages = changedSavedMessages;
@@ -15725,6 +15889,9 @@ public class MessagesStorage extends BaseController {
         }
         if (message.via_bot_id != 0 && !usersToLoad.contains(message.via_bot_id)) {
             usersToLoad.add(message.via_bot_id);
+        }
+        if (message.guestchat_via_from != null) {
+            addLoadPeerInfo(message.guestchat_via_from, usersToLoad, chatsToLoad);
         }
         if (message.action != null) {
             if (message.action.user_id != 0 && !usersToLoad.contains(message.action.user_id)) {
